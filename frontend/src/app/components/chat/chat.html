@@ -1,0 +1,161 @@
+@if (mode.modo() === 'voz') {
+  <section class="flex min-h-[560px] flex-col items-center justify-center gap-6 rounded-3xl border border-border-soft bg-white p-8 text-center shadow-sm">
+    <div class="w-[210px] max-sm:w-[160px]">
+      <app-avatar [hablando]="voice.hablando()" [bocaScale]="voice.bocaScale()" />
+    </div>
+
+    <div class="flex flex-col items-center gap-1.5">
+      <p class="font-display text-xl font-semibold tracking-tight text-ink">
+        @if (voice.hablando()) {
+          Custodio está hablando…
+        } @else if (enviando()) {
+          Custodio está pensando…
+        } @else if (voice.listening() && enseniando()) {
+          Dime qué debe aprender…
+        } @else if (voice.listening()) {
+          Te estoy escuchando…
+        } @else if (enseniando()) {
+          Toca el micrófono y dime qué debe recordar
+        } @else {
+          Toca el micrófono pa' hablar
+        }
+      </p>
+      @if (voice.micStatus()) {
+        <p class="text-sm text-ink-faint italic">{{ voice.micStatus() }}</p>
+      }
+    </div>
+
+    <div class="flex flex-col items-center gap-4">
+      <button
+        type="button"
+        class="flex h-16 w-16 flex-none items-center justify-center rounded-full text-white shadow-md transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        [ngClass]="voice.listening() ? 'animate-mic-pulse bg-coral' : (enseniando() ? 'bg-sun hover:bg-sea' : 'bg-sea hover:bg-sea-deep')"
+        [disabled]="!voice.micSupported() || (!voice.listening() && (voice.ocupado() || enviando()))"
+        [title]="voice.micSupported() ? 'Hablarle a Custodio' : 'Tu navegador no soporta reconocimiento de voz (usa Chrome)'"
+        (click)="usarMicrofono()"
+      >
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+          <line x1="12" y1="18" x2="12" y2="22"/>
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        class="rounded-full border px-4 py-1.5 text-xs font-medium transition-colors"
+        [ngClass]="enseniando()
+          ? 'border-sun bg-sun/15 text-sea-deep'
+          : 'border-border text-ink-soft hover:border-ink-faint hover:text-ink'"
+        (click)="alternarEnsenar()"
+        title="Lo próximo que digas se guarda como personalidad, en vez de ser una pregunta"
+      >
+        @if (enseniando()) {
+          ✕ Cancelar modo enseñar
+        } @else {
+          🎭 Enseñarle algo a Custodio
+        }
+      </button>
+
+      <button
+        type="button"
+        class="rounded-full border border-border px-5 py-2 text-sm font-medium text-ink-soft transition-colors hover:border-ink-faint hover:bg-paper hover:text-ink"
+        (click)="salir()"
+      >
+        Salir del modo voz
+      </button>
+    </div>
+  </section>
+} @else {
+  <section class="flex min-h-[560px] flex-col rounded-3xl border border-border-soft bg-white p-5 shadow-sm">
+    <div class="mb-3.5 flex items-center justify-between gap-3">
+      <h2 class="font-display text-lg font-semibold tracking-tight">Conversación</h2>
+      <button
+        class="rounded-full border border-border bg-paper px-3.5 py-1.5 text-[12.5px] font-medium whitespace-nowrap text-ink-soft transition-colors hover:border-ink-faint hover:bg-white hover:text-ink"
+        (click)="reiniciar()"
+        title="Borrar historial"
+      >
+        Empezar de nuevo
+      </button>
+    </div>
+
+    <div class="flex max-h-[480px] min-h-[340px] flex-1 flex-col gap-2.5 overflow-y-auto px-1 py-1 pb-4" #chatLog>
+      @for (msg of mensajes(); track $index) {
+        @switch (msg.tipo) {
+          @case ('user') {
+            <div class="max-w-[80%] self-end rounded-2xl rounded-br-sm bg-coral px-4 py-2.5 text-[14.5px] leading-relaxed text-white">
+              <p class="m-0 whitespace-pre-wrap">{{ msg.texto }}</p>
+            </div>
+          }
+          @case ('error') {
+            <div class="max-w-[80%] self-center rounded-lg bg-coral-soft px-4 py-2.5 text-[13px] leading-relaxed text-coral-dark">
+              <p class="m-0 whitespace-pre-wrap">{{ msg.texto }}</p>
+            </div>
+          }
+          @default {
+            <div class="max-w-[80%] self-start rounded-2xl rounded-bl-sm border border-border-soft bg-paper px-4 py-2.5 text-[14.5px] leading-relaxed">
+              <p class="m-0 whitespace-pre-wrap">{{ msg.texto }}</p>
+            </div>
+          }
+        }
+      }
+      @if (enviando()) {
+        <div class="flex items-center gap-1 self-start rounded-2xl rounded-bl-sm border border-border-soft bg-paper px-4 py-3.5">
+          <span class="h-1.5 w-1.5 animate-typing-bounce rounded-full bg-ink-faint"></span>
+          <span class="h-1.5 w-1.5 animate-typing-bounce rounded-full bg-ink-faint [animation-delay:150ms]"></span>
+          <span class="h-1.5 w-1.5 animate-typing-bounce rounded-full bg-ink-faint [animation-delay:300ms]"></span>
+        </div>
+      }
+    </div>
+
+    <form class="mt-3 flex items-center gap-1.5 rounded-full border border-border bg-paper p-1.5 transition-[border-color,box-shadow] focus-within:border-sea focus-within:shadow-[0_0_0_3px_rgba(107,92,255,0.16)]" (ngSubmit)="enviar()">
+      <button
+        type="button"
+        class="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-full transition-colors active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-50"
+        [ngClass]="voice.listening()
+          ? 'animate-mic-pulse border border-coral bg-coral text-white'
+          : 'border border-border bg-white text-ink-soft hover:border-sea hover:text-sea'"
+        [disabled]="!voice.micSupported()"
+        [title]="voice.micSupported() ? 'Hablarle a Custodio' : 'Tu navegador no soporta reconocimiento de voz (usa Chrome)'"
+        (click)="usarMicrofono()"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+          <line x1="12" y1="18" x2="12" y2="22"/>
+        </svg>
+      </button>
+      <input
+        type="text"
+        [(ngModel)]="entrada"
+        name="mensaje"
+        placeholder="Escríbele algo a Custodio, o usa el micrófono…"
+        autocomplete="off"
+        [disabled]="enviando()"
+        class="min-w-0 flex-1 border-none bg-transparent px-1.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-60"
+      />
+      <button
+        type="submit"
+        [disabled]="enviando()"
+        title="Enviar"
+        class="flex h-[38px] w-[38px] flex-none items-center justify-center rounded-full bg-coral text-white transition-colors active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-coral-dark"
+      >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </form>
+
+    <div class="mt-3 flex items-center justify-between text-[12.5px] text-ink-soft">
+      <label class="flex cursor-pointer items-center gap-2">
+        <span class="relative inline-flex h-[18px] w-8 items-center rounded-full bg-border transition-colors has-checked:bg-sea">
+          <input type="checkbox" [(ngModel)]="vozActiva" name="vozActiva" [ngModelOptions]="{standalone: true}" class="peer sr-only" />
+          <span class="ml-0.5 h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-3.5"></span>
+        </span>
+        Custodio me responde hablando
+      </label>
+      <span class="italic text-ink-faint">{{ voice.micStatus() }}</span>
+    </div>
+  </section>
+}

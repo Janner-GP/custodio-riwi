@@ -1,0 +1,24 @@
+<div class="relative mx-auto flex w-full items-end justify-center">
+  <!-- resplandor: crece y se aviva con el volumen real de la voz -->
+  <span
+    class="absolute bottom-2 h-[65%] w-[75%] rounded-full bg-sun blur-2xl transition-opacity duration-150"
+    [style.opacity]="hablando() ? 0.22 + (bocaScale() - 1) * 0.09 : 0"
+  ></span>
+
+  <img
+    src="/brand/custodio-character.webp"
+    alt="Custodio, costeño de Barranquilla"
+    class="relative z-10 h-auto w-full origin-bottom drop-shadow-[0_14px_20px_rgba(0,0,0,0.35)]"
+    [class.animate-respirar]="!hablando()"
+    [class.animate-hablando]="hablando()"
+  />
+
+  @if (hablando()) {
+    <div class="absolute -bottom-1 z-20 flex h-5 items-end gap-[3px] rounded-full bg-white/95 px-2 py-1.5 shadow-md ring-1 ring-black/5">
+      <span class="w-[3px] rounded-full bg-coral transition-[height] duration-75" [style.height.%]="20 + (bocaScale() - 1) * 12"></span>
+      <span class="w-[3px] rounded-full bg-coral transition-[height] duration-75" [style.height.%]="20 + (bocaScale() - 1) * 17"></span>
+      <span class="w-[3px] rounded-full bg-coral transition-[height] duration-75" [style.height.%]="20 + (bocaScale() - 1) * 14"></span>
+      <span class="w-[3px] rounded-full bg-coral transition-[height] duration-75" [style.height.%]="20 + (bocaScale() - 1) * 19"></span>
+    </div>
+  }
+</div>

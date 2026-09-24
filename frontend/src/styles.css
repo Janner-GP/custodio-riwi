@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Geist", system-ui, sans-serif;
+  --font-sans: "Geist", system-ui, sans-serif;
+
+  --color-sea-deep: #181e4b;
+  --color-sea: #6b5cff;
+  --color-sun: #a99bff;
+  --color-coral: #fe654f;
+  --color-coral-dark: #e0503b;
+  --color-coral-soft: #ffe4df;
+  --color-ink: #1b1f3b;
+  --color-ink-soft: #5b5f7a;
+  --color-ink-faint: #9295ab;
+  --color-paper: #f6f6fb;
+  --color-border: #e2e2ef;
+  --color-border-soft: #ececf5;
+
+  --animate-respirar: respirar 3.4s ease-in-out infinite;
+  --animate-cabecear: cabecear 0.5s ease-in-out infinite;
+  --animate-mic-pulse: mic-pulse 1.1s infinite;
+  --animate-typing-bounce: typing-bounce 1.1s infinite ease-in-out;
+}
+
+@keyframes respirar {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.01); }
+}
+@keyframes cabecear {
+  0%, 100% { transform: rotate(0deg) translateY(-3px); }
+  50% { transform: rotate(0.8deg) translateY(-4px); }
+}
+@keyframes mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(254, 101, 79, 0.45); }
+  70% { box-shadow: 0 0 0 10px rgba(254, 101, 79, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(254, 101, 79, 0); }
+}
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+html, body {
+  height: 100%;
+}
+
+@utility animate-hablando {
+  animation: respirar 3.4s ease-in-out infinite, cabecear 0.5s ease-in-out infinite;
+}
+
+/* thin, quiet scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-faint);
+}

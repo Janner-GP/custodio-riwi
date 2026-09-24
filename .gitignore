@@ -1,0 +1,45 @@
+# --- Sistema / editores ---
+.DS_Store
+Thumbs.db
+*.log
+
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/mcp.json
+
+# --- Backend (Python / uv) ---
+backend/.venv
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.py[oc]
+backend/**/*.py[oc]
+backend/*.egg-info
+backend/.env
+backend/data/
+
+# --- Frontend (Angular / Node) ---
+frontend/node_modules
+frontend/dist
+frontend/.angular
+frontend/tmp
+frontend/out-tsc
+frontend/bazel-out
+npm-debug.log*
+yarn-error.log*
+frontend/.sass-cache/
+frontend/coverage
+/libpeerconnection.log
+testem.log
+frontend/typings
+frontend/__screenshots__/
