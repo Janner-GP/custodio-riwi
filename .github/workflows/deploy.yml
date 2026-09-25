@@ -1,0 +1,27 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy vía SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: BACKEND_ENV
+          script: |
+            cd ~/custodio-riwi
+            git pull origin main
+            printf '%s' "$BACKEND_ENV" > backend/.env
+            docker compose up --build -d
+            docker image prune -f
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
