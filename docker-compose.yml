@@ -1,22 +1,28 @@
-services:
-  backend:
-    build: ./backend
-    env_file:
-      - ./backend/.env
-    environment:
-      CORS_ORIGINS: '["https://custodio-app.riwi.io"]'
-      DATA_DIR: /data
-    volumes:
-      - custodio-data:/data
-    restart: unless-stopped
+name: Deploy to VPS
 
-  frontend:
-    build: ./frontend
-    depends_on:
-      - backend
-    ports:
-      - "127.0.0.1:4200:80"
-    restart: unless-stopped
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
-volumes:
-  custodio-data:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy vía SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          envs: BACKEND_ENV
+          script: |
+            cd ~/custodio-riwi
+            git fetch origin main
+            git reset --hard origin/main
+            printf '%s' "$BACKEND_ENV" > backend/.env
+            docker compose up --build -d
+            docker image prune -f
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
