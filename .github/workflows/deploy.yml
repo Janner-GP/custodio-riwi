@@ -19,7 +19,8 @@ jobs:
           envs: BACKEND_ENV
           script: |
             cd ~/custodio-riwi
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             printf '%s' "$BACKEND_ENV" > backend/.env
             docker compose up --build -d
             docker image prune -f
