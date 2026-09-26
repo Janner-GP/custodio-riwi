@@ -1,4 +1,5 @@
 import { NgClass } from '@angular/common';
+import { Router } from '@angular/router';
 import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -26,6 +27,7 @@ export class Chat {
   api = inject(ApiService);
   voice = inject(VoiceService);
   mode = inject(ModeService);
+  private router = inject(Router);
 
   @ViewChild('chatLog') chatLogRef!: ElementRef<HTMLDivElement>;
 
@@ -141,6 +143,7 @@ export class Chat {
   salir() {
     this.voice.detener();
     this.mode.cambiar();
+    this.router.navigateByUrl('/');
   }
 
   reiniciar() {

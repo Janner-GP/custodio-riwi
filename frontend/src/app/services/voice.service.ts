@@ -1,12 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ApiService } from './api.service';
-import { ModeService } from './mode.service';
 
 @Injectable({ providedIn: 'root' })
 export class VoiceService {
   private api = inject(ApiService);
-  private mode = inject(ModeService);
 
   readonly hablando = signal(false);
   readonly bocaScale = signal(1);
@@ -211,10 +209,7 @@ export class VoiceService {
   private mostrarErrorTts(error: unknown) {
     const mostrar = (respuesta: string) => {
       if (respuesta.includes('quota_exceeded') || respuesta.includes('credits remaining')) {
-        this.api.disponibilidadVoz.set({ available: false, reason: 'no_credits', remaining: 0 });
-        this.detener();
         this.micStatus.set('ElevenLabs agotó los créditos. Puedes seguir chateando por texto.');
-        this.mode.elegir('texto');
       } else {
         this.micStatus.set('No se pudo generar la voz de ElevenLabs. Revisa la conexión y la configuración.');
       }

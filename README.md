@@ -113,22 +113,22 @@ lo que dices y lo envía como si lo hubieras escrito.
 
 1. Entra a https://elevenlabs.io y crea una cuenta (tiene nivel gratis limitado por mes, luego es de pago).
 2. Ve a **Profile → API Keys** y copia tu key.
-3. Pégala en `backend/.env` en `ELEVENLABS_API_KEY=...`. La API key debe tener los permisos
-   `text_to_speech` y `user_read`; este último permite verificar los créditos antes de habilitar el modo voz.
+3. Pégala en `backend/.env` en `ELEVENLABS_API_KEY=...`. La API key debe tener permiso `text_to_speech`.
 4. Custodio usa un solo **Voice ID**, configurado en `ELEVENLABS_VOICE_ID` en `backend/.env`. El proyecto
    trae un ID predeterminado; puedes reemplazarlo por el de la voz que elijas en la biblioteca de
    ElevenLabs. Todas las respuestas habladas usan ese mismo ID.
 5. Reinicia el backend (`docker compose up --build backend` o el proceso local).
 
 La voz de respuesta depende de ElevenLabs: si falta la API key, el Voice ID no es válido o el servicio
-falla, Custodio no cambia a otra voz. Antes de permitir el modo voz, la app verifica que haya créditos;
-si no hay, deja disponible el chat de texto. El micrófono para dictar usa el reconocimiento de voz del navegador.
+falla, Custodio no cambia a otra voz. El chat de texto sigue disponible y muestra el error recibido.
+El micrófono para dictar usa el reconocimiento de voz del navegador.
 
 El avatar mueve la boca de verdad, sincronizada en tiempo real con el volumen del audio que suena
 (no es una animación fija, reacciona a lo que efectivamente se está escuchando).
 
 ## 7. Uso
 
+- **Selector:** `/`. **Chat de texto:** `/texto`. **Chat de voz:** `/voz`.
 - **Panel izquierdo (Conversación):** chatea directamente con Custodio.
 - **Panel derecho (Personalidad de Custodio):** aquí escribes cómo quieres que hable o se comporte
   (puedes indicar de quién es cada aporte). Por ejemplo, puedes enseñarle expresiones paisas o costeñas.

@@ -28,7 +28,7 @@
           <button
             type="button"
             class="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
-            (click)="voice.detener(); mode.cambiar()"
+            (click)="salirModo()"
           >
             {{ mode.modo() === 'voz' ? '🎙️ Modo voz' : '⌨️ Modo texto' }} · cambiar
           </button>
@@ -47,34 +47,9 @@
       </div>
     </header>
 
-    @switch (mode.modo()) {
-      @case ('texto') {
-        <main class="mt-6 grid grid-cols-[1.3fr_1fr] items-start gap-5 max-[860px]:grid-cols-1">
-          <app-chat />
-          <app-personalidad />
-        </main>
-      }
-      @case ('voz') {
-        @if (api.disponibilidadVoz()?.available) {
-          <main class="mx-auto mt-6 max-w-[520px]">
-            <app-chat />
-          </main>
-        } @else if (api.disponibilidadVoz() === null) {
-          <main class="mx-auto mt-6 max-w-[520px] rounded-3xl border border-border-soft bg-white p-8 text-center text-sm text-ink-soft shadow-sm">
-            Verificando la disponibilidad de ElevenLabs…
-          </main>
-        } @else {
-          <div class="mt-6">
-            <app-mode-select />
-          </div>
-        }
-      }
-      @default {
-        <div class="mt-6">
-          <app-mode-select />
-        </div>
-      }
-    }
+    <main class="mt-6">
+      <router-outlet />
+    </main>
   </div>
 
   <footer class="mt-auto bg-sea-deep py-8 text-center">

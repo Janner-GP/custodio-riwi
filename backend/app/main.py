@@ -80,42 +80,6 @@ def reset_chat():
     return {"ok": True}
 
 
-@app.get("/api/tts/status")
-def tts_status():
-    if not settings.elevenlabs_api_key:
-        return {"available": False, "reason": "not_configured"}
-
-    try:
-        r = requests.get(
-            "https://api.elevenlabs.io/v1/user/subscription",
-            headers={"xi-api-key": settings.elevenlabs_api_key},
-            timeout=8,
-        )
-        if r.status_code != 200:
-            try:
-                detail = r.json().get("detail", {})
-                if isinstance(detail, dict) and (
-                    detail.get("code") == "missing_permissions"
-                    or detail.get("status") == "missing_permissions"
-                ):
-                    return {"available": False, "reason": "permission_missing"}
-            except (ValueError, AttributeError):
-                pass
-            return {"available": False, "reason": "unavailable"}
-
-        subscription = r.json()
-        usados = int(subscription["character_count"])
-        limite = int(subscription["character_limit"])
-        restantes = max(0, limite - usados)
-        return {
-            "available": restantes > 0,
-            "reason": "ready" if restantes > 0 else "no_credits",
-            "remaining": restantes,
-        }
-    except (requests.RequestException, ValueError, KeyError, TypeError):
-        return {"available": False, "reason": "unavailable"}
-
-
 @app.post("/api/tts")
 def tts(body: TextoIn):
     if not settings.elevenlabs_api_key:

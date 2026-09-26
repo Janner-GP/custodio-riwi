@@ -10,7 +10,6 @@ export class ApiService {
 
   readonly status = signal('Conectado');
   readonly statusError = signal(false);
-  readonly disponibilidadVoz = signal<DisponibilidadVoz | null>(null);
 
   getPersonalidad(): Observable<Personalidad> {
     return this.http.get<Personalidad>(`${this.base}/personalidad`);
@@ -36,13 +35,4 @@ export class ApiService {
     return this.http.post(`${this.base}/tts`, { texto }, { responseType: 'blob' });
   }
 
-  consultarDisponibilidadVoz(): Observable<DisponibilidadVoz> {
-    return this.http.get<DisponibilidadVoz>(`${this.base}/tts/status`);
-  }
-}
-
-export interface DisponibilidadVoz {
-  available: boolean;
-  reason: 'ready' | 'no_credits' | 'not_configured' | 'permission_missing' | 'unavailable';
-  remaining?: number;
 }
