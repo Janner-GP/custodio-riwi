@@ -20,6 +20,8 @@ export class VoiceService {
   private audioCtx: AudioContext | null = null;
   private animacionId: number | null = null;
   private recognition: any = null;
+  private vozEspanol: SpeechSynthesisVoice | null = null;
+  private vozMasculinaIdentificada = false;
   private audioActual: HTMLAudioElement | null = null;
   private solicitudTts: Subscription | null = null;
   private audioUrl: string | null = null;
@@ -27,6 +29,10 @@ export class VoiceService {
 
   constructor() {
     this.inicializarReconocimiento();
+    this.elegirVoz();
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = () => this.elegirVoz();
+    }
   }
 
   private inicializarReconocimiento() {
@@ -70,10 +76,14 @@ export class VoiceService {
   }
 
   private iniciarAudioContext() {
-    if (!this.audioCtx) {
-      this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    try {
+      const AudioContextAPI = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextAPI) return;
+      if (!this.audioCtx) this.audioCtx = new AudioContextAPI();
+      if (this.audioCtx.state === 'suspended') void this.audioCtx.resume().catch(() => {});
+    } catch {
+      this.audioCtx = null;
     }
-    if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
   }
 
   private animarBoca(audioEl: HTMLAudioElement) {
@@ -121,6 +131,9 @@ export class VoiceService {
     this.cicloVoz++;
     this.solicitudTts?.unsubscribe();
     this.solicitudTts = null;
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     if (this.audioActual) {
       this.audioActual.onplay = null;
       this.audioActual.onended = null;
@@ -146,12 +159,18 @@ export class VoiceService {
     const cicloActual = this.cicloVoz;
     this.ocupado.set(true);
     let finalizado = false;
+    let fallbackIniciado = false;
     const terminar = () => {
       if (cicloActual !== this.cicloVoz || finalizado) return;
       finalizado = true;
       this.solicitudTts = null;
       this.ocupado.set(false);
       onEnd?.();
+    };
+    const usarFallback = () => {
+      if (cicloActual !== this.cicloVoz || fallbackIniciado) return;
+      fallbackIniciado = true;
+      this.hablarConNavegador(texto, cicloActual, terminar);
     };
 
     this.iniciarAudioContext();
@@ -183,25 +202,24 @@ export class VoiceService {
           this.audioUrl = null;
           this.audioActual = null;
           this.micStatus.set('No se pudo reproducir la voz de ElevenLabs.');
-          terminar();
+          usarFallback();
         };
 
-        this.animarBoca(audioEl);
+        if (this.audioCtx) this.animarBoca(audioEl);
         audioEl.play().catch(() => {
           if (cicloActual !== this.cicloVoz) return;
           this.detenerBoca();
           URL.revokeObjectURL(url);
           this.audioUrl = null;
           this.audioActual = null;
-          this.micStatus.set('No se pudo reproducir la voz de ElevenLabs.');
-          terminar();
+          usarFallback();
         });
       },
       error: (error) => {
         if (cicloActual !== this.cicloVoz) return;
         this.detenerBoca();
         this.mostrarErrorTts(error);
-        terminar();
+        usarFallback();
       },
     });
   }
@@ -209,9 +227,9 @@ export class VoiceService {
   private mostrarErrorTts(error: unknown) {
     const mostrar = (respuesta: string) => {
       if (respuesta.includes('quota_exceeded') || respuesta.includes('credits remaining')) {
-        this.micStatus.set('ElevenLabs agotó los créditos. Puedes seguir chateando por texto.');
+        this.micStatus.set('ElevenLabs no tiene créditos; usando la voz del dispositivo.');
       } else {
-        this.micStatus.set('No se pudo generar la voz de ElevenLabs. Revisa la conexión y la configuración.');
+        this.micStatus.set('ElevenLabs no está disponible; usando la voz del dispositivo.');
       }
     };
 
@@ -221,6 +239,63 @@ export class VoiceService {
     } else {
       mostrar(typeof cuerpo === 'string' ? cuerpo : (JSON.stringify(cuerpo ?? '') ?? ''));
     }
+  }
+
+  private elegirVoz() {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const voces = window.speechSynthesis.getVoices();
+    const vocesEspanol = voces.filter((voz) => voz.lang?.toLowerCase().startsWith('es'));
+    // Los navegadores no exponen de forma consistente el género. Preferimos una voz
+    // masculina reconocible; si el dispositivo no la tiene, usamos su voz española
+    // disponible con el tono más grave posible en vez de dejar a Custodio en silencio.
+    const vozMasculina = vocesEspanol.find((voz) => {
+      const gender = (voz as SpeechSynthesisVoice & { gender?: string }).gender?.toLowerCase();
+      const nombre = voz.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return gender === 'male' ||
+        /\b(jorge|juan|pablo|raul|alvaro|andres|carlos|diego|miguel|antonio|daniel|enrique|sergio|luis|hugo|mateo|male|masculin(?:o)?|hombre)\b/i.test(nombre);
+    });
+    this.vozMasculinaIdentificada = !!vozMasculina;
+    this.vozEspanol = vozMasculina ??
+      vocesEspanol.find((voz) => voz.lang.toLowerCase() === 'es-co') ??
+      vocesEspanol[0] ??
+      null;
+  }
+
+  private hablarConNavegador(texto: string, cicloActual: number, onEnd: () => void) {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      this.micStatus.set('Este navegador no tiene una voz de respaldo disponible.');
+      onEnd();
+      return;
+    }
+
+    const sintesis = window.speechSynthesis;
+    // Algunos navegadores cargan su catálogo de voces después de iniciar la app.
+    this.elegirVoz();
+    sintesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(texto);
+    utterance.lang = this.vozEspanol?.lang || 'es-CO';
+    if (this.vozEspanol) utterance.voice = this.vozEspanol;
+    utterance.pitch = this.vozMasculinaIdentificada ? 1 : 0.72;
+    utterance.rate = 0.96;
+    utterance.onstart = () => {
+      if (cicloActual !== this.cicloVoz) return;
+      this.hablando.set(true);
+      this.iniciarBocaSimulada();
+    };
+    utterance.onend = () => {
+      if (cicloActual !== this.cicloVoz) return;
+      this.detenerBoca();
+      onEnd();
+    };
+    utterance.onerror = () => {
+      if (cicloActual !== this.cicloVoz) return;
+      this.detenerBoca();
+      onEnd();
+    };
+    this.micStatus.set(this.vozMasculinaIdentificada
+      ? 'Usando una voz masculina del dispositivo.'
+      : 'Usando la voz en español del dispositivo con tono grave.');
+    sintesis.speak(utterance);
   }
 
   /** Corta cualquier audio, síntesis o escucha en curso (p. ej. al salir del modo voz). */
