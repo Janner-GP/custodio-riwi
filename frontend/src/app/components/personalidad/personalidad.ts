@@ -46,7 +46,7 @@ export class Personalidad implements OnInit {
         this.texto.set('');
         this.autor.set('');
         if (this.mode.modo() === 'voz') {
-          this.voice.hablar('Listo, mijo, ya guardé ese aporte a mi personalidad.', true);
+          this.voice.hablar('Listo, ya guardé ese aporte en mi personalidad.', true);
         }
       },
       error: (err) => alert(err?.error?.detail || 'No se pudo guardar el aporte.'),

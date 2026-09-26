@@ -1,9 +1,12 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { ApiService } from './api.service';
+import { ModeService } from './mode.service';
 
 @Injectable({ providedIn: 'root' })
 export class VoiceService {
   private api = inject(ApiService);
+  private mode = inject(ModeService);
 
   readonly hablando = signal(false);
   readonly bocaScale = signal(1);
@@ -19,15 +22,13 @@ export class VoiceService {
   private audioCtx: AudioContext | null = null;
   private animacionId: number | null = null;
   private recognition: any = null;
-  private vozEspanol: SpeechSynthesisVoice | null = null;
   private audioActual: HTMLAudioElement | null = null;
+  private solicitudTts: Subscription | null = null;
+  private audioUrl: string | null = null;
+  private cicloVoz = 0;
 
   constructor() {
     this.inicializarReconocimiento();
-    this.elegirVoz();
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = () => this.elegirVoz();
-    }
   }
 
   private inicializarReconocimiento() {
@@ -117,15 +118,22 @@ export class VoiceService {
     this.hablando.set(false);
   }
 
-  /** Corta en seco cualquier audio o síntesis que haya quedado sonando, sin tocar el reconocimiento. */
+  /** Corta el audio y cancela una generación de voz que todavía esté pendiente. */
   private detenerAudio() {
+    this.cicloVoz++;
+    this.solicitudTts?.unsubscribe();
+    this.solicitudTts = null;
     if (this.audioActual) {
+      this.audioActual.onplay = null;
+      this.audioActual.onended = null;
+      this.audioActual.onerror = null;
       this.audioActual.pause();
+      this.audioActual.removeAttribute('src');
+      this.audioActual.load();
       this.audioActual = null;
     }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    if (this.audioUrl) URL.revokeObjectURL(this.audioUrl);
+    this.audioUrl = null;
   }
 
   async hablar(texto: string, voiceEnabled: boolean, onEnd?: () => void) {
@@ -137,68 +145,87 @@ export class VoiceService {
       return;
     }
 
+    const cicloActual = this.cicloVoz;
     this.ocupado.set(true);
+    let finalizado = false;
     const terminar = () => {
+      if (cicloActual !== this.cicloVoz || finalizado) return;
+      finalizado = true;
+      this.solicitudTts = null;
       this.ocupado.set(false);
       onEnd?.();
     };
 
     this.iniciarAudioContext();
 
-    this.api.tts(texto).subscribe({
+    this.solicitudTts = this.api.tts(texto).subscribe({
       next: (blob) => {
+        if (cicloActual !== this.cicloVoz) return;
         const url = URL.createObjectURL(blob);
+        this.audioUrl = url;
         const audioEl = new Audio(url);
         audioEl.crossOrigin = 'anonymous';
         this.audioActual = audioEl;
 
-        audioEl.onplay = () => this.hablando.set(true);
+        audioEl.onplay = () => {
+          if (cicloActual === this.cicloVoz) this.hablando.set(true);
+        };
         audioEl.onended = () => {
+          if (cicloActual !== this.cicloVoz) return;
           this.detenerBoca();
           URL.revokeObjectURL(url);
+          this.audioUrl = null;
+          this.audioActual = null;
           terminar();
         };
         audioEl.onerror = () => {
+          if (cicloActual !== this.cicloVoz) return;
           this.detenerBoca();
+          URL.revokeObjectURL(url);
+          this.audioUrl = null;
+          this.audioActual = null;
+          this.micStatus.set('No se pudo reproducir la voz de ElevenLabs.');
           terminar();
         };
 
         this.animarBoca(audioEl);
-        audioEl.play();
+        audioEl.play().catch(() => {
+          if (cicloActual !== this.cicloVoz) return;
+          this.detenerBoca();
+          URL.revokeObjectURL(url);
+          this.audioUrl = null;
+          this.audioActual = null;
+          this.micStatus.set('No se pudo reproducir la voz de ElevenLabs.');
+          terminar();
+        });
       },
-      error: () => this.hablarConNavegador(texto, terminar),
+      error: (error) => {
+        if (cicloActual !== this.cicloVoz) return;
+        this.detenerBoca();
+        this.mostrarErrorTts(error);
+        terminar();
+      },
     });
   }
 
-  private elegirVoz() {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    const voces = window.speechSynthesis.getVoices();
-    this.vozEspanol =
-      voces.find((v) => v.lang === 'es-CO') ||
-      voces.find((v) => v.lang?.toLowerCase().startsWith('es')) ||
-      null;
-  }
+  private mostrarErrorTts(error: unknown) {
+    const mostrar = (respuesta: string) => {
+      if (respuesta.includes('quota_exceeded') || respuesta.includes('credits remaining')) {
+        this.api.disponibilidadVoz.set({ available: false, reason: 'no_credits', remaining: 0 });
+        this.detener();
+        this.micStatus.set('ElevenLabs agotó los créditos. Puedes seguir chateando por texto.');
+        this.mode.elegir('texto');
+      } else {
+        this.micStatus.set('No se pudo generar la voz de ElevenLabs. Revisa la conexión y la configuración.');
+      }
+    };
 
-  private hablarConNavegador(texto: string, onEnd?: () => void) {
-    if (!window.speechSynthesis) {
-      onEnd?.();
-      return;
+    const cuerpo = (error as { error?: unknown } | null)?.error;
+    if (cuerpo instanceof Blob) {
+      void cuerpo.text().then(mostrar, () => mostrar(''));
+    } else {
+      mostrar(typeof cuerpo === 'string' ? cuerpo : (JSON.stringify(cuerpo ?? '') ?? ''));
     }
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(texto);
-    utter.lang = 'es-CO';
-    if (this.vozEspanol) utter.voice = this.vozEspanol;
-    this.hablando.set(true);
-    this.iniciarBocaSimulada();
-    utter.onend = () => {
-      this.detenerBoca();
-      onEnd?.();
-    };
-    utter.onerror = () => {
-      this.detenerBoca();
-      onEnd?.();
-    };
-    window.speechSynthesis.speak(utter);
   }
 
   /** Corta cualquier audio, síntesis o escucha en curso (p. ej. al salir del modo voz). */

@@ -1,13 +1,13 @@
-# Custodio — Agente cultural costeño
+# Custodio — Asistente cultural configurable
 
-Aplicación web con un agente de IA llamado **Custodio**: costeño de Barranquilla,
-sombrero, chanclas, bermuda y camisilla, relajado, especializado en temas culturales de la Costa Caribe colombiana.
+Aplicación web con un asistente de IA llamado **Custodio**. De forma inicial habla en español colombiano
+neutro; puedes enseñarle desde la interfaz una identidad o forma de hablar regional, como costeña o paisa.
 
 Usa la API gratuita de **Google Gemini** (nivel gratis con límite de mensajes por minuto/día — suficiente
 para uso personal).
 
-Puedes ir agregando "aportes" de personalidad (los prompts que te den distintas personas) desde la propia
-interfaz, sin tocar código: se suman al carácter base de Custodio.
+Puedes ir agregando "aportes" de personalidad desde la propia interfaz, sin tocar código. Así puedes
+enseñarle la forma de hablar o la identidad regional que prefieras; al inicio usa español colombiano neutro.
 
 ## Estructura del proyecto
 
@@ -109,20 +109,20 @@ redirige `/api/*` a `http://localhost:8000`, igual que en producción.
 **Escucharte (micrófono):** gratis, usa el navegador (Chrome/Edge/Brave). Al hacer clic en 🎤 transcribe
 lo que dices y lo envía como si lo hubieras escrito.
 
-**Que te responda hablando — con ElevenLabs (voz natural):**
+**Que te responda hablando — siempre con ElevenLabs:**
 
 1. Entra a https://elevenlabs.io y crea una cuenta (tiene nivel gratis limitado por mes, luego es de pago).
 2. Ve a **Profile → API Keys** y copia tu key.
-3. Pégala en `backend/.env` en `ELEVENLABS_API_KEY=...`
-4. Elige una voz en https://elevenlabs.io/app/voice-library — busca voces en español latino que te suenen
-   naturales (no hay una etiquetada exactamente "costeña de Barranquilla", pero puedes probar varias voces
-   masculinas de español latino/caribeño hasta encontrar la que más te guste). Cada voz tiene un **Voice ID**
-   (lo ves en los detalles de la voz o dándole "Use this voice" y copiando el ID). Pégalo en `backend/.env`
-   en `ELEVENLABS_VOICE_ID=...` (si lo dejas vacío usa un ID de ejemplo que puede no sonar como quieres).
+3. Pégala en `backend/.env` en `ELEVENLABS_API_KEY=...`. La API key debe tener los permisos
+   `text_to_speech` y `user_read`; este último permite verificar los créditos antes de habilitar el modo voz.
+4. Custodio usa un solo **Voice ID**, configurado en `ELEVENLABS_VOICE_ID` en `backend/.env`. El proyecto
+   trae un ID predeterminado; puedes reemplazarlo por el de la voz que elijas en la biblioteca de
+   ElevenLabs. Todas las respuestas habladas usan ese mismo ID.
 5. Reinicia el backend (`docker compose up --build backend` o el proceso local).
 
-Si no configuras `ELEVENLABS_API_KEY`, la app cae automáticamente a la voz gratuita del navegador
-(la genérica, sin acento costeño real) para que igual puedas usarla.
+La voz de respuesta depende de ElevenLabs: si falta la API key, el Voice ID no es válido o el servicio
+falla, Custodio no cambia a otra voz. Antes de permitir el modo voz, la app verifica que haya créditos;
+si no hay, deja disponible el chat de texto. El micrófono para dictar usa el reconocimiento de voz del navegador.
 
 El avatar mueve la boca de verdad, sincronizada en tiempo real con el volumen del audio que suena
 (no es una animación fija, reacciona a lo que efectivamente se está escuchando).
@@ -130,9 +130,9 @@ El avatar mueve la boca de verdad, sincronizada en tiempo real con el volumen de
 ## 7. Uso
 
 - **Panel izquierdo (Conversación):** chatea directamente con Custodio.
-- **Panel derecho (Personalidad de Custodio):** aquí pegas los prompts que te den las personas
-  (puedes poner de quién es cada aporte). Se guardan automáticamente y se suman a la personalidad
-  base de Custodio en cada nueva respuesta. Puedes eliminar cualquier aporte con el botón "✕".
+- **Panel derecho (Personalidad de Custodio):** aquí escribes cómo quieres que hable o se comporte
+  (puedes indicar de quién es cada aporte). Por ejemplo, puedes enseñarle expresiones paisas o costeñas.
+  Los aportes se guardan y se aplican en cada nueva respuesta. Puedes eliminar cualquiera con el botón "✕".
 - **"Empezar de nuevo":** borra el historial de la conversación (no borra la personalidad).
 
 ## 8. Personalizar más a fondo

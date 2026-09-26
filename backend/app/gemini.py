@@ -6,11 +6,10 @@ from app.config import settings
 client = genai.Client(api_key=settings.google_api_key)
 
 # Respuestas cortas a propósito: que se sienta como una conversación, no una conferencia.
-# thinking_budget=0 desactiva el razonamiento interno del modelo, que si no se lleva
-# gran parte del presupuesto de max_output_tokens y trunca la respuesta visible.
+# Respuestas conversacionales cortas, con razonamiento mínimo para reducir latencia.
 GENERATION_CONFIG = types.GenerateContentConfig(
-    max_output_tokens=200,
-    thinking_config=types.ThinkingConfig(thinking_budget=0),
+    max_output_tokens=120,
+    thinking_config=types.ThinkingConfig(thinking_level="minimal"),
 )
 
 

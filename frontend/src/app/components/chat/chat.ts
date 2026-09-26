@@ -11,8 +11,10 @@ interface MensajeVista {
   tipo: 'bot' | 'user' | 'error';
 }
 
+const DESPEDIDA = /\bchao\b/i;
+
 const SALUDO_INICIAL =
-  '¡Ajá, ¿qué molleja! Yo soy Custodio, mijo. Pregúntame lo que quieras de la Costa: carnaval, cumbia, comida, lo que sea.';
+  'Hola, soy Custodio. Puedo conversar contigo sobre cultura, lugares, historias y muchos otros temas de Colombia. ¿Qué te gustaría explorar?';
 
 @Component({
   selector: 'app-chat',
@@ -75,10 +77,10 @@ export class Chat {
     }
     this.api.addAporte(contenido, 'Dictado por voz').subscribe({
       next: () => {
-        this.voice.hablar('Listo, ya me aprendí eso, mijo.', true, () => this.escucharSiguiente());
+        this.voice.hablar('Listo, ya guardé ese aporte en mi personalidad.', true, () => this.escucharSiguiente());
       },
       error: () => {
-        this.voice.hablar('Erda, no logré guardar eso. Intenta otra vez.', true, () => this.escucharSiguiente());
+        this.voice.hablar('No pude guardar ese aporte. Puedes intentarlo otra vez.', true, () => this.escucharSiguiente());
       },
     });
   }
@@ -101,7 +103,18 @@ export class Chat {
         this.api.status.set('Conectado');
         this.api.statusError.set(false);
         this.enviando.set(false);
-        this.voice.hablar(data.respuesta, this.vozActiva(), () => this.escucharSiguiente());
+        const despedida = DESPEDIDA.test(mensaje);
+        this.voice.hablar(data.respuesta, this.vozActiva(), () => {
+          if (despedida) {
+            if (this.mode.modo() === 'voz') {
+              this.salir();
+            } else {
+              setTimeout(() => this.salir(), 1800);
+            }
+            return;
+          }
+          this.escucharSiguiente();
+        });
       },
       error: (err) => {
         const mensajeError = err?.error?.detail || 'Algo falló hablando con Custodio.';
@@ -109,7 +122,11 @@ export class Chat {
         this.api.status.set('Error de conexión con la API');
         this.api.statusError.set(true);
         this.enviando.set(false);
-        this.voice.hablar(mensajeError, this.vozActiva(), () => this.escucharSiguiente());
+        if (DESPEDIDA.test(mensaje)) {
+          this.salir();
+        } else {
+          this.voice.hablar(mensajeError, this.vozActiva(), () => this.escucharSiguiente());
+        }
       },
     });
   }
@@ -128,7 +145,7 @@ export class Chat {
 
   reiniciar() {
     this.api.resetChat().subscribe(() => {
-      const saludo = 'Listo, mijo. Empezamos de cero. ¿Qué quieres saber de la Costa?';
+      const saludo = 'Listo. Empezamos de nuevo. ¿Qué te gustaría conversar?';
       this.mensajes.set([{ texto: saludo, tipo: 'bot' }]);
       if (this.mode.modo() === 'voz') {
         this.voice.hablar(saludo, true, () => this.escucharSiguiente());

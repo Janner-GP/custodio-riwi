@@ -17,4 +17,29 @@ export class App {
   voice = inject(VoiceService);
   api = inject(ApiService);
   mode = inject(ModeService);
+
+  constructor() {
+    // Si el navegador recuerda el modo voz, no montamos el chat hasta verificar la cuota.
+    if (this.mode.modo() === 'voz') this.verificarDisponibilidadVoz();
+  }
+
+  verificarDisponibilidadVoz() {
+    this.api.disponibilidadVoz.set(null);
+    this.api.consultarDisponibilidadVoz().subscribe({
+      next: (estado) => {
+        this.api.disponibilidadVoz.set(estado);
+        if (!estado.available && this.mode.modo() === 'voz') {
+          this.voice.detener();
+          this.mode.cambiar();
+        }
+      },
+      error: () => {
+        this.api.disponibilidadVoz.set({ available: false, reason: 'unavailable' });
+        if (this.mode.modo() === 'voz') {
+          this.voice.detener();
+          this.mode.cambiar();
+        }
+      },
+    });
+  }
 }
